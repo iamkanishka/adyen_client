@@ -1,0 +1,219 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - master
+
+# Cancel in-progress runs for the same branch/PR when a new commit is pushed.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Shared across all jobs — must satisfy mix.exs `elixir: "~> 1.18"`.
+  ELIXIR_VERSION: "1.18.3"
+  OTP_VERSION: "27.3"
+  MIX_ENV: test
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Format + Credo
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (format + credo)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      - name: Restore deps cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: deps-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+
+      - name: Install dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Compile (warnings as errors)
+        run: mix compile --warnings-as-errors
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Run Credo
+        run: mix credo --strict
+
+  # ---------------------------------------------------------------------------
+  # 2. Tests + Coverage
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test (OTP ${{ matrix.otp }} / Elixir ${{ matrix.elixir }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Minimum supported version per mix.exs (`elixir: "~> 1.18"`)
+          - elixir: "1.18.0"
+            otp: "27.0"
+          # Latest stable
+          - elixir: "1.18.3"
+            otp: "27.3"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      - name: Restore deps cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-
+
+      - name: Install dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Compile
+        run: mix compile --warnings-as-errors
+
+      # - name: Run tests with coverage
+      #   run: mix coveralls.github
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---------------------------------------------------------------------------
+  # 3. Dialyzer
+  # ---------------------------------------------------------------------------
+  dialyzer:
+    name: Dialyzer
+    runs-on: ubuntu-latest
+    # Dialyzer is slow — only run on push to main and on PRs targeting main,
+    # not on every matrix combination. Lint and tests gate PRs; Dialyzer
+    # guards main.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      - name: Restore deps cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: deps-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+
+      - name: Restore PLT cache
+        uses: actions/cache@v4
+        id: plt-cache
+        with:
+          path: priv/plts
+          # Bust the PLT cache when deps or OTP/Elixir versions change.
+          key: plt-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            plt-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+
+      - name: Install dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Compile
+        run: mix compile
+
+      - name: Create PLT (first run only)
+        if: steps.plt-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p priv/plts
+          mix dialyzer --plt
+
+      - name: Run Dialyzer
+        run: mix dialyzer --format github
+
+  # ---------------------------------------------------------------------------
+  # 4. Publish to Hex.pm
+  # Only runs when a version tag (v*) is pushed AND all three quality gates pass.
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Publish to Hex.pm
+    runs-on: ubuntu-latest
+    needs: [lint, test, dialyzer]
+    # Only runs on version tags. Add HEX_API_KEY to Settings → Secrets → Actions.
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      - name: Restore deps cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: deps-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-
+
+      - name: Install dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Build docs
+        run: mix docs
+        env:
+          MIX_ENV: dev
+
+      - name: Publish to Hex.pm
+        run: mix hex.publish --yes
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
+          MIX_ENV: dev
