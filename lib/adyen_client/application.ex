@@ -1,5 +1,5 @@
 defmodule AdyenClient.Application do
-  @moduledoc ""
+  @moduledoc false
   use Application
 
   @impl true
