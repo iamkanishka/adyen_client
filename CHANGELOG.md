@@ -10,11 +10,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [0.1.0] — 2026-05-14
+## [1.0.0] — 2026-05-14
 
 ### Added
 
 #### Core infrastructure
+
 - `AdyenClient.Config` — NimbleOptions-free config with defaults, validation, and URL routing
   for all 22 Adyen host patterns across test and live environments
 - `AdyenClient.Client` — HTTP client with Req: JSON encode/decode, `X-API-Key` auth,
@@ -25,9 +26,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   with PCI-field redaction (`cardNumber`, `cvv`, `cvc`, `holderName`, etc.)
 - `AdyenClient.CircuitBreaker` — GenServer circuit breaker (closed → open → half-open)
 - `AdyenClient.RateLimiter` — token-bucket GenServer rate limiter (100 req/s, burst 200)
-- `AdyenClient.Application` — OTP supervisor starting CircuitBreaker + RateLimiter
+- `AdyenClient.Application` (internal OTP supervisor) — starts CircuitBreaker + RateLimiter
 
 #### Online Payments
+
 - `AdyenClient.Checkout.Sessions` — create session, get session result (Checkout v72)
 - `AdyenClient.Checkout.Payments` — list payment methods, create payment, submit details,
   get card details (Checkout v72)
@@ -49,6 +51,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (Payout v68, deprecated)
 
 #### In-Person Payments
+
 - `AdyenClient.Terminal` — all 18 NEXO message types: Login, Logout, EnableService, Admin,
   Payment, CardAcquisition, StoredValue, Reversal, Reconciliation, GetTotals,
   BalanceInquiry, TransactionStatus, Abort, Diagnosis, Display, Input, Print,
@@ -63,6 +66,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   get terminal details, list terminals (postfmapi v1, deprecated)
 
 #### Management API (v3)
+
 - `AdyenClient.Management.Companies` — list companies, get company, list merchants
 - `AdyenClient.Management.Merchants` — list, get, create, activate
 - `AdyenClient.Management.Stores` — list (merchant), list (global), create, get, update
@@ -89,6 +93,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (Balance Control v2)
 
 #### Platforms & Financial Products
+
 - `AdyenClient.LegalEntity` — legal entity CRUD, transfer instruments, business lines,
   documents, Terms of Service (get/accept/status), PCI questionnaires, tax e-delivery
   consent, hosted onboarding (LEM v4) — 27 endpoints
@@ -118,6 +123,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `AdyenClient.OpenBanking` — create verification routes, get verification report (v1)
 
 #### Classic APIs
+
 - `AdyenClient.ClassicPayments` — authorise, authorise3d, authorise3ds2, get auth result,
   get 3DS2 result, capture, cancel, refund, cancelOrRefund, technicalCancel,
   adjustAuthorisation, donate, voidPendingRefund (Payment v68)
@@ -130,6 +136,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   update, delete (Notification v6)
 
 #### Webhooks
+
 - `AdyenClient.Webhooks.HMAC` — HMAC-SHA256 validation for standard and Balance Platform
   webhooks; constant-time `secure_compare/2` to prevent timing attacks
 - `AdyenClient.Webhooks.Handler` — `@behaviour` with `handle_event/2` callback; safe
@@ -140,6 +147,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   validation, dispatch, `[accepted]` response; `read_body/2` for `Plug.Parsers`
 
 #### Documentation & tooling
+
 - Full `@spec` and `@type` coverage — Dialyzer-clean
 - Explicit `@spec` on all TerminalSettings functions (no metaprogramming)
 - Dialyzer config in `mix.exs` with PLT path, flags, and ignore file
@@ -149,4 +157,4 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `mix lint.ci` alias for CI pipelines
 - Guide pages: configuration, webhooks, error handling, telemetry
 
-[0.1.0]: https://github.com/your-org/adyen_client/releases/tag/v0.1.0
+[1.0.0]: https://github.com/your-org/adyen_client/releases/tag/v1.0.0
