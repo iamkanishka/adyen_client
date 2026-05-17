@@ -1,6 +1,4 @@
 defmodule AdyenClient.Application do
-
-
   use Application
 
   @impl true

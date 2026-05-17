@@ -2,7 +2,7 @@ defmodule AdyenClient.MixProject do
   use Mix.Project
 
   @version "1.0.0"
-  @source_url "https://github.com/your-org/adyen_client"
+  @source_url "https://github.com/iamkanishka/adyen_client"
   @description """
   Production-grade Elixir client for the Adyen Payments Platform.
   Covers all 200+ API endpoints, every webhook event type, and includes
